@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="om">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imaanaa Social Suite</title>
+  <style>
+    :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --card-bg: #ffffff; --text-dark: #050505; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--text-dark); margin: 0; }
+    
+    .navbar { background: #ffffff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+    .nav-title { font-size: 22px; font-weight: bold; color: var(--fb-blue); }
+    
+    .container { max-width: 650px; margin: 20px auto; padding: 0 10px; }
+    .card { background: var(--card-bg); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); }
+    
+    .input-field { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
+    .btn-primary { background: var(--fb-blue); color: white; }
+    .btn-green { background: #42b72a; color: white; }
+    .btn-danger { background: #fa3e3e; color: white; }
+
+    .user-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 8px 0; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .online { background: #31a24c; }
+    .offline { background: #b0b3b8; }
+
+    .post { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .post img, .post video { width: 100%; border-radius: 8px; margin-top: 10px; }
+
+    .video-call-box { display: flex; gap: 10px; justify-content: center; background: #000; padding: 10px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; }
+    video { width: 45%; max-height: 200px; border-radius: 6px; background: #222; object-fit: cover; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="nav-title">ImaanaaCall Social</div>
+    <div id="user-head-sec"></div>
+  </div>
+
+  <div class="container">
+
+    <!-- AUTH SECTION -->
+    <div id="auth-sec" class="card">
+      <h3 id="auth-title">Login</h3>
+      <input type="text" id="auth-username" class="input-field" placeholder="Username...">
+      <input type="password" id="auth-password" class="input-field" placeholder="Password...">
+      <input type="text" id="auth-phone" class="input-field" placeholder="Phone Number (Signup qofaaf)...">
+      <textarea id="auth-bio" class="input-field" placeholder="Bio (Signup qofaaf)..."></textarea>
+      
+      <button class="btn btn-primary" id="auth-btn" onclick="handleAuth()">Login</button>
+      <p style="text-align: center; cursor: pointer; color: var(--fb-blue);" onclick="toggleAuthMode()">Account hin qabduu? Signup godha</p>
+    </div>
+
+    <!-- MAIN APP SUITE -->
+    <div id="app-sec" style="display: none;">
+
+      <!-- PROFILE -->
+      <div class="card">
+        <h4>Profaayilii Edittii Gochuu</h4>
+        <input type="text" id="edit-phone" class="input-field" placeholder="Lakkoofsa Bilbilaa...">
+        <textarea id="edit-bio" class="input-field" placeholder="Bio keessan..."></textarea>
+        <button class="btn btn-green" onclick="saveProfile()">Profile Update</button>
+      </div>
+
+      <!-- FACEBOOK STYLE GROUP CALL ROOM CARD -->
+      <div class="card" style="background: #e7f3ff; border: 1px solid #bfdbfe;">
+        <h4 style="color: var(--fb-blue); margin-top:0;">🎥 Facebook Style Group Room</h4>
+        <p style="font-size:13px; color:#555;">Hirmaattota hunda waliin bifa Room tiin yeroo tokkotti bilbila grupuu jalqabaa!</p>
+        <button class="btn btn-primary" onclick="startGroupCall()">Group Call Jalqabi (Join Room)</button>
+      </div>
+
+      <!-- ONLINE USERS & CALL -->
+      <div class="card">
+        <h4>Maammiltoota (Users & Direct Call / Chat)</h4>
+        <div id="users-list"></div>
+      </div>
+
+      <!-- CALL SCREEN (1-on-1 & Group Call Grid) -->
+      <div id="call-screen" class="card" style="display: none;">
+        <h4>Video / Voice Call Active</h4>
+        <div class="video-call-box" id="video-grid">
+          <video id="local-video" autoplay muted></video>
+        </div>
+        <button class="btn btn-danger" onclick="endCall()" style="margin-top:10px;">End Call 🚫</button>
+      </div>
+
+      <!-- GROUP CHAT -->
+      <div class="card">
+        <h4>Group Chat (Hawaasa Waliif)</h4>
+        <div id="group-chat-box" style="height: 140px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
+        <input type="text" id="group-msg-input" class="input-field" placeholder="Ergaa group-aaf...">
+        <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi</button>
+      </div>
+
+      <!-- PRIVATE CHAT -->
+      <div class="card" id="private-chat-section" style="display:none;">
+        <h4 id="private-chat-title">Direct Chat</h4>
+        <div id="private-chat-box" style="height: 120px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
+        <input type="text" id="private-msg-input" class="input-field" placeholder="Ergaa dhuunfaa...">
+        <button class="btn btn-green" onclick="sendPrivateMessage()">Ergi</button>
+        <button class="btn btn-danger" onclick="closePrivateChat()" style="margin-top:5px;">Cufi</button>
+      </div>
+
+      <!-- POST FEED -->
+      <div class="card">
+        <h4>Maxxansa Haaraa (Post - Suuraa ykn Vidiyoo)</h4>
+        <textarea id="post-text" class="input-field" placeholder="Maaltu jira..."></textarea>
+        <input type="file" id="post-file" class="input-field" accept="*/*">
+        <button class="btn btn-primary" onclick="submitPost()">Post Godhi</button>
+      </div>
+
+      <h3>Post Feed</h3>
+      <div id="feed-container"></div>
+
+    </div>
+
+  </div>
+
+  <!-- INCOMING CALL MODAL -->
+  <div id="call-modal" class="modal">
+    <div style="background: #fff; padding: 25px; border-radius: 8px; text-align: center; width: 300px;">
+      <h3 id="caller-name-txt">Calling...</h3>
+      <button class="btn btn-green" onclick="acceptCall()">Accept 📞</button>
+      <button class="btn btn-danger" onclick="rejectCall()">Reject 🚫</button>
+    </div>
+  </div>
+
+  <audio id="ringtone" src="https://actions.google.com/sounds/v1/ambiences/office_phone_ring.ogg" loop></audio>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
