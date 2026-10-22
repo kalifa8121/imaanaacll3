@@ -179,7 +179,7 @@ socket.on('private-message', data => {
   }
 });
 
-// CALL ENGINE (Suuraa fi Sagaleen moobaayilaarratti akka haalaan hojjetu)
+// CALL ENGINE (Sirna Stream fi Ringtone fooyya'e)
 async function startCall(userToCall, isVideo) {
   try {
     currentStream = await navigator.mediaDevices.getUserMedia({ 
@@ -195,9 +195,11 @@ async function startCall(userToCall, isVideo) {
     document.getElementById('call-screen').style.display = 'block';
 
     peer = new SimplePeer({ initiator: true, trickle: false, stream: currentStream, config: iceServersConfig });
+    
     peer.on('signal', signalData => {
       socket.emit('call-user', { userToCall, signalData, callerName: currentUser.username, isVideo, ringStyle: document.getElementById('ring-style-select')?.value });
     });
+
     peer.on('stream', remoteStream => {
       const remoteVideo = document.getElementById('remote-video');
       if(remoteVideo) {
@@ -216,12 +218,12 @@ socket.on('incoming-call', data => {
   document.getElementById('caller-name-txt').innerText = `${data.callerName} is calling...`;
   document.getElementById('call-modal').style.display = 'flex';
   
-  // Ringtone taphachiisuuf
+  // Ringtone taphachiisuuf (Audio unlock)
   const ring = getActiveRingtone();
   if(ring) {
     ring.currentTime = 0;
     ring.play().catch(err => {
-      console.log("Ringtone autoplay restricted:", err);
+      console.log("Ringtone autoplay restricted by browser:", err);
     });
   }
 });
