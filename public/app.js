@@ -7,7 +7,7 @@ const socket = io({
 let currentUser = null, isSignup = false, currentStream = null, peer = null, incomingData = null, activeChatUser = null;
 let groupPeers = {};
 
-// STUN Servers (Mobile Data Cellular 4G/5G fi WiFi irratti akka walqunnaman gargaaru)
+// STUN Servers (Mobile Data Cellular fi WiFi irratti akka walqunnaman gargaaru)
 const iceServersConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -48,7 +48,9 @@ async function handleAuth() {
   document.getElementById('auth-sec').style.display = 'none';
   document.getElementById('app-sec').style.display = 'block';
 
-  document.getElementById('user-head-sec').innerHTML = `<b>@${currentUser.username}</b> <button onclick="location.reload()" class="btn btn-danger" style="width:auto; padding:5px;">Logout</button>`;
+  let adminLink = currentUser.is_admin ? `<a href="admin.html" style="color:yellow; margin-left:10px;">Admin Dashboard</a>` : '';
+
+  document.getElementById('user-head-sec').innerHTML = `<b>@${currentUser.username}</b> ${adminLink} <button onclick="location.reload()" class="btn btn-danger" style="width:auto; padding:5px; margin-left:5px;">Logout</button>`;
 
   socket.emit('register-user', currentUser.username);
   loadPosts();
@@ -88,7 +90,6 @@ socket.on('update-user-list', users => {
   });
 });
 
-// GROUP CHAT (Media support: Suuraa, Sagalee, Vidiyoo)
 function sendGroupMessage() {
   const input = document.getElementById('group-msg-input');
   const fileInput = document.getElementById('group-media-input');
@@ -121,7 +122,6 @@ socket.on('group-chat-message', data => {
   box.scrollTop = box.scrollHeight;
 });
 
-// PRIVATE CHAT (Media support: Suuraa, Sagalee, Vidiyoo)
 function openPrivateChat(username) {
   activeChatUser = username;
   document.getElementById('private-chat-title').innerText = `Chat @${username} wajjin`;
@@ -180,21 +180,33 @@ socket.on('private-message', data => {
   }
 });
 
-// CALL ENGINE (STUN Server waliin qindaa'e)
+// CALL ENGINE (Moobaayilaaf Camera/Mic qindaa'e)
 async function startCall(userToCall, isVideo) {
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo ? { width: { ideal: 480 }, height: { ideal: 360 } } : false });
+    currentStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: true, 
+      video: isVideo ? { width: { ideal: 480 }, height: { ideal: 360 }, facingMode: "user" } : false 
+    });
+    
     const grid = document.getElementById('video-grid');
-    grid.innerHTML = `<video id="local-video" autoplay muted></video><video id="remote-video" autoplay></video>`;
-    document.getElementById('local-video').srcObject = currentStream;
+    if(grid) {
+      grid.innerHTML = `<video id="local-video" autoplay muted playsinline></video><video id="remote-video" autoplay playsinline></video>`;
+      document.getElementById('local-video').srcObject = currentStream;
+    }
     document.getElementById('call-screen').style.display = 'block';
 
     peer = new SimplePeer({ initiator: true, trickle: false, stream: currentStream, config: iceServersConfig });
     peer.on('signal', signalData => {
       socket.emit('call-user', { userToCall, signalData, callerName: currentUser.username, isVideo, ringStyle: document.getElementById('ring-style-select')?.value });
     });
-    peer.on('stream', remoteStream => { document.getElementById('remote-video').srcObject = remoteStream; });
-  } catch(e) { alert("Camera/Mic Permission barbaachisa!"); }
+    peer.on('stream', remoteStream => {
+      const remoteVideo = document.getElementById('remote-video');
+      if(remoteVideo) remoteVideo.srcObject = remoteStream;
+    });
+  } catch(e) { 
+    alert("Camera ykn Microphone fayyadamuuf eeyyama (Permission) kennuu qabda! Settings keessaa eeyyamadhu."); 
+    console.error(e);
+  }
 }
 
 socket.on('incoming-call', data => {
@@ -202,7 +214,6 @@ socket.on('incoming-call', data => {
   document.getElementById('caller-name-txt').innerText = `${data.callerName} is calling...`;
   document.getElementById('call-modal').style.display = 'flex';
   
-  // Ringtone browser policy darbuuf user interaction eega
   const ring = getActiveRingtone();
   if(ring) {
     ring.play().catch(err => {
@@ -217,15 +228,30 @@ async function acceptCall() {
   document.getElementById('call-modal').style.display = 'none';
   document.getElementById('call-screen').style.display = 'block';
 
-  currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingData.isVideo ? { width: { ideal: 480 }, height: { ideal: 360 } } : false });
-  const grid = document.getElementById('video-grid');
-  grid.innerHTML = `<video id="local-video" autoplay muted></video><video id="remote-video" autoplay></video>`;
-  document.getElementById('local-video').srcObject = currentStream;
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: true, 
+      video: incomingData.isVideo ? { width: { ideal: 480 }, height: { ideal: 360 }, facingMode: "user" } : false 
+    });
+    
+    const grid = document.getElementById('video-grid');
+    if(grid) {
+      grid.innerHTML = `<video id="local-video" autoplay muted playsinline></video><video id="remote-video" autoplay playsinline></video>`;
+      document.getElementById('local-video').srcObject = currentStream;
+    }
 
-  peer = new SimplePeer({ initiator: false, trickle: false, stream: currentStream, config: iceServersConfig });
-  peer.on('signal', signal => socket.emit('accept-call', { signal, to: incomingData.from }));
-  peer.on('stream', remoteStream => { document.getElementById('remote-video').srcObject = remoteStream; });
-  peer.signal(incomingData.signal);
+    peer = new SimplePeer({ initiator: false, trickle: false, stream: currentStream, config: iceServersConfig });
+
+    peer.on('signal', signal => socket.emit('accept-call', { signal, to: incomingData.from }));
+    peer.on('stream', remoteStream => {
+      const remoteVideo = document.getElementById('remote-video');
+      if(remoteVideo) remoteVideo.srcObject = remoteStream;
+    });
+
+    peer.signal(incomingData.signal);
+  } catch(e) {
+    alert("Camera/Mic eeyyama gaafata!");
+  }
 }
 
 function rejectCall() {
@@ -240,10 +266,12 @@ socket.on('call-failed-offline', () => { alert("Maammilli offline waan ta'eef bi
 
 async function startGroupCall() {
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: { ideal: 480 }, height: { ideal: 360 }, facingMode: "user" } });
     const grid = document.getElementById('video-grid');
-    grid.innerHTML = `<video id="local-video" autoplay muted></video>`;
-    document.getElementById('local-video').srcObject = currentStream;
+    if(grid) {
+      grid.innerHTML = `<video id="local-video" autoplay muted playsinline></video>`;
+      document.getElementById('local-video').srcObject = currentStream;
+    }
     document.getElementById('call-screen').style.display = 'block';
     socket.emit('join-group-call');
   } catch(e) { alert("Camera/Mic feedhi barbaachisa!"); }
@@ -259,6 +287,7 @@ socket.on('user-joined-group', userId => {
       vid = document.createElement('video');
       vid.id = `remote-${userId}`;
       vid.autoplay = true;
+      vid.setAttribute('playsinline', '');
       document.getElementById('video-grid').appendChild(vid);
     }
     vid.srcObject = remoteStream;
@@ -278,6 +307,7 @@ socket.on('group-signal', data => {
         vid = document.createElement('video');
         vid.id = `remote-${data.from}`;
         vid.autoplay = true;
+        vid.setAttribute('playsinline', '');
         document.getElementById('video-grid').appendChild(vid);
       }
       vid.srcObject = remoteStream;
@@ -328,6 +358,7 @@ async function loadPosts() {
   const res = await fetch('/api/posts');
   const posts = await res.json();
   const feed = document.getElementById('feed-container');
+  if(!feed) return;
   feed.innerHTML = '';
   posts.forEach(p => {
     feed.innerHTML += `
@@ -335,7 +366,7 @@ async function loadPosts() {
         <b>@${p.username}</b>
         <p>${p.content || ''}</p>
         ${p.media_type === 'image' ? `<img src="${p.media_url}">` : ''}
-        ${p.media_type === 'video' ? `<video src="${p.media_url}" controls></video>` : ''}
+        ${p.media_type === 'video' ? `<video src="${p.media_url}" controls playsinline></video>` : ''}
       </div>`;
   });
 }
