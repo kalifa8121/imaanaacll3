@@ -26,14 +26,7 @@ const pool = new Pool({
 app.use(compression());
 app.use(express.json({ limit: '1000mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1000mb' }));
-
-// Daandii public folder qajeelchuu
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Root URL irratti index.html kallattiin akka qaqqabu godhuu
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 
 async function initDB() {
   try {
