@@ -1,6 +1,6 @@
 const socket = io({
   transports: ['websocket', 'polling'],
-  reconnectionAttempts: 10,
+  reconnectionAttempts: 20,
   reconnectionDelay: 1000
 });
 
@@ -82,7 +82,6 @@ socket.on('update-user-list', users => {
   });
 });
 
-// GROUP CHAT
 function sendGroupMessage() {
   const input = document.getElementById('group-msg-input');
   const message = input.value.trim();
@@ -97,7 +96,6 @@ socket.on('group-chat-message', data => {
   box.scrollTop = box.scrollHeight;
 });
 
-// PRIVATE CHAT
 function openPrivateChat(username) {
   activeChatUser = username;
   document.getElementById('private-chat-title').innerText = `Chat @${username} wajjin`;
@@ -132,12 +130,11 @@ socket.on('private-message', data => {
   }
 });
 
-// --- 1-on-1 CALL ENGINE ---
 async function startCall(userToCall, isVideo) {
   try {
     currentStream = await navigator.mediaDevices.getUserMedia({ 
       audio: true, 
-      video: isVideo ? { width: { ideal: 640 }, height: { ideal: 480 } } : false 
+      video: isVideo ? { width: { ideal: 480 }, height: { ideal: 360 } } : false 
     });
     
     const grid = document.getElementById('video-grid');
@@ -172,7 +169,7 @@ async function acceptCall() {
 
   currentStream = await navigator.mediaDevices.getUserMedia({ 
     audio: true, 
-    video: incomingData.isVideo ? { width: { ideal: 640 }, height: { ideal: 480 } } : false 
+    video: incomingData.isVideo ? { width: { ideal: 480 }, height: { ideal: 360 } } : false 
   });
   
   const grid = document.getElementById('video-grid');
@@ -199,10 +196,12 @@ function rejectCall() {
 socket.on('call-accepted', signal => { if(peer) peer.signal(signal); });
 socket.on('call-failed-offline', () => { alert("Maammilli offline waan ta'eef bilbilamuu hin dandeenye."); endCall(); });
 
-// --- FACEBOOK STYLE GROUP CALL LOGIC ---
 async function startGroupCall() {
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    currentStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: true, 
+      video: { width: { ideal: 480 }, height: { ideal: 360 } } 
+    });
     const grid = document.getElementById('video-grid');
     grid.innerHTML = `<video id="local-video" autoplay muted></video>`;
     document.getElementById('local-video').srcObject = currentStream;
@@ -284,7 +283,6 @@ function endCall() {
   document.getElementById('call-screen').style.display = 'none';
 }
 
-// POST SUBMISSION
 function submitPost() {
   const content = document.getElementById('post-text').value;
   const fileInput = document.getElementById('post-file');
