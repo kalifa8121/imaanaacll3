@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ImaanaaCall Social</title>
+  <title>Imaanaa Social Suite</title>
   <style>
     :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --card-bg: #ffffff; --text-dark: #050505; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--text-dark); margin: 0; }
@@ -20,11 +20,11 @@
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .online { background: #31a24c; }
     .offline { background: #b0b3b8; }
+    .post { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .post img, .post video { width: 100%; border-radius: 8px; margin-top: 10px; }
     .video-call-box { display: flex; gap: 10px; justify-content: center; background: #000; padding: 10px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; }
     video { width: 45%; max-height: 200px; border-radius: 6px; background: #222; object-fit: cover; }
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
-    .rec-active { background: #fa3e3e !important; color: white; animation: pulse 1s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -36,11 +36,17 @@
 
   <div class="container">
 
+    <!-- NOTIFICATION BAR -->
+    <div id="notification-banner" class="card" style="display:none; background:#ffebee; border:1px solid #ef9a9a; color:#c62828;"></div>
+
     <!-- AUTH SECTION -->
     <div id="auth-sec" class="card">
       <h3 id="auth-title">Login</h3>
       <input type="text" id="auth-username" class="input-field" placeholder="Username...">
       <input type="password" id="auth-password" class="input-field" placeholder="Password...">
+      <input type="text" id="auth-phone" class="input-field" placeholder="Phone Number (Signup qofaaf)...">
+      <textarea id="auth-bio" class="input-field" placeholder="Bio (Signup qofaaf)..."></textarea>
+      
       <button class="btn btn-primary" id="auth-btn" onclick="handleAuth()">Login</button>
       <p style="text-align: center; cursor: pointer; color: var(--fb-blue);" onclick="toggleAuthMode()">Account hin qabduu? Signup godha</p>
     </div>
@@ -48,9 +54,25 @@
     <!-- MAIN APP -->
     <div id="app-sec" style="display: none;">
 
-      <!-- ONLINE USERS LIST -->
+      <!-- RING STYLE SETTING -->
       <div class="card">
-        <h4>Maammiltoota (Users)</h4>
+        <h4>🎵 Gosa Sagalee Ringtone Filadhu</h4>
+        <select id="ring-style-select" class="input-field">
+          <option value="classic">Classic Office Phone</option>
+          <option value="modern">Modern Chime</option>
+          <option value="soft">Soft Melody</option>
+        </select>
+      </div>
+
+      <!-- GROUP CALL ROOM -->
+      <div class="card" style="background: #e7f3ff; border: 1px solid #bfdbfe;">
+        <h4 style="color: var(--fb-blue); margin-top:0;">🎥 Facebook Style Group Room</h4>
+        <button class="btn btn-primary" onclick="startGroupCall()">Group Call Jalqabi (Join Room)</button>
+      </div>
+
+      <!-- ONLINE USERS -->
+      <div class="card">
+        <h4>Maammiltoota (Users & Direct Call / Chat)</h4>
         <div id="users-list"></div>
       </div>
 
@@ -58,27 +80,40 @@
       <div id="call-screen" class="card" style="display: none;">
         <h4>Video / Voice Call Active</h4>
         <div class="video-call-box" id="video-grid">
-          <video id="local-video" autoplay muted playsinline></video>
-          <video id="remote-video" autoplay playsinline></video>
+          <video id="local-video" autoplay muted></video>
         </div>
         <button class="btn btn-danger" onclick="endCall()" style="margin-top:10px;">End Call 🚫</button>
       </div>
 
-      <!-- PRIVATE CHAT -->
+      <!-- GROUP CHAT (Media support: Suuraa, Sagalee, Vidiyoo) -->
+      <div class="card">
+        <h4>Group Chat (Hawaasa Waliif)</h4>
+        <div id="group-chat-box" style="height: 140px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
+        <input type="text" id="group-msg-input" class="input-field" placeholder="Ergaa text-aaf...">
+        <input type="file" id="group-media-input" class="input-field" accept="image/*,video/*,audio/*">
+        <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi (Media waliin)</button>
+      </div>
+
+      <!-- PRIVATE CHAT (Media support: Suuraa, Sagalee, Vidiyoo) -->
       <div class="card" id="private-chat-section" style="display:none;">
         <h4 id="private-chat-title">Direct Chat</h4>
-        <div id="private-chat-box" style="height: 150px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
-        
+        <div id="private-chat-box" style="height: 120px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
         <input type="text" id="private-msg-input" class="input-field" placeholder="Ergaa dhuunfaa...">
-        
-        <div style="display: flex; gap: 5px; margin-top: 5px;">
-          <input type="file" id="private-file-input" style="display:none;" accept="image/*,video/*,audio/*" onchange="sendPrivateFile()">
-          <button class="btn btn-primary" style="width: 30%;" onclick="document.getElementById('private-file-input').click()">📷 Media</button>
-          <button class="btn btn-green" id="rec-btn" style="width: 35%;" onclick="toggleVoiceRecord()">🎙️ Audio Record</button>
-          <button class="btn btn-primary" style="width: 35%;" onclick="sendPrivateMessage()">Ergi</button>
-        </div>
+        <input type="file" id="private-media-input" class="input-field" accept="image/*,video/*,audio/*">
+        <button class="btn btn-green" onclick="sendPrivateMessage()">Ergi (Media waliin)</button>
         <button class="btn btn-danger" onclick="closePrivateChat()" style="margin-top:5px;">Cufi</button>
       </div>
+
+      <!-- POST FEED -->
+      <div class="card">
+        <h4>Maxxansa Haaraa (Post - Suuraa ykn Vidiyoo)</h4>
+        <textarea id="post-text" class="input-field" placeholder="Maaltu jira..."></textarea>
+        <input type="file" id="post-file" class="input-field" accept="*/*">
+        <button class="btn btn-primary" onclick="submitPost()">Post Godhi</button>
+      </div>
+
+      <h3>Post Feed</h3>
+      <div id="feed-container"></div>
 
     </div>
 
@@ -92,6 +127,11 @@
       <button class="btn btn-danger" onclick="rejectCall()">Reject 🚫</button>
     </div>
   </div>
+
+  <!-- RINGTONES AUDIO SOURCES -->
+  <audio id="ring-classic" src="https://actions.google.com/sounds/v1/ambiences/office_phone_ring.ogg" loop></audio>
+  <audio id="ring-modern" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" loop></audio>
+  <audio id="ring-soft" src="https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" loop></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
