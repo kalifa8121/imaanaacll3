@@ -2,70 +2,142 @@
 <html lang="om">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Dashboard - Post & User Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ImaanaaCall - Admin Dashboard</title>
   <style>
-    body { font-family: sans-serif; background: #0b141a; color: white; padding: 20px; }
-    .card { background: #111b21; border: 1px solid #2a3942; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
-    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    .btn-green { background: #00a884; color: white; }
-    .btn-danger { background: #ea4335; color: white; }
-    input { padding: 8px; background: #202c33; border: 1px solid #2a3942; color: white; border-radius: 4px; }
+    :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --card-bg: #ffffff; --text-dark: #050505; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--text-dark); margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; }
+    .card { background: var(--card-bg); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn { padding: 8px 14px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+    .btn-green { background: #42b72a; color: white; }
+    .btn-danger { background: #fa3e3e; color: white; }
+    .btn-primary { background: var(--fb-blue); color: white; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
+    img, video { max-width: 100px; border-radius: 4px; }
   </style>
 </head>
 <body>
 
-  <h2>Admin Dashboard (Post Hunda Too'achuu)</h2>
+  <div class="container">
+    <h2>👑 Admin Dashboard (To'annoo Guutuu)</h2>
+    <a href="index.html" class="btn btn-green" style="text-decoration: none; display:inline-block; margin-bottom:15px;">Gara Appii Deebi'uudhaaf</a>
 
-  <!-- BAN USER -->
-  <div class="card">
-    <h3>Maammila Adabuu (Ban User)</h3>
-    <input type="text" id="ban-user-in" placeholder="Username...">
-    <input type="number" id="ban-days-in" placeholder="Guyyoota..." value="3">
-    <button class="btn btn-danger" onclick="banUser()">Ban User 🚫</button>
-  </div>
+    <!-- POSTS CONTROL -->
+    <div class="card">
+      <h3>Maxxansaalee (Posts) Hunda To'achuu fi Raggaasisuu</h3>
+      <div id="admin-posts-list"></div>
+    </div>
 
-  <!-- ALL POSTS MODERATION -->
-  <div class="card">
-    <h3>Posts Hunda (Approve / Delete)</h3>
-    <div id="pending-posts"></div>
+    <!-- USERS CONTROL (BAN / UNBAN / MAKE ADMIN) -->
+    <div class="card">
+      <h3>Maamiltota To'achuu (Ban, Unban & Make Admin)</h3>
+      <div id="admin-users-list"></div>
+    </div>
   </div>
 
   <script>
-    async function loadPending() {
-      const res = await fetch('/api/admin/pending-posts');
-      const posts = await res.json();
-      const div = document.getElementById('pending-posts');
-      div.innerHTML = '';
+    async function loadAdminData() {
+      // Posts load gochuu
+      const resPosts = await fetch('/api/admin/pending-posts');
+      const posts = await resPosts.json();
+      const postsContainer = document.getElementById('admin-posts-list');
+      postsContainer.innerHTML = '';
+      
       posts.forEach(p => {
-        div.innerHTML += `
-          <div style="border-bottom:1px solid #333; padding:10px;">
-            <b>@${p.username}</b> [Status: ${p.approved ? 'Approved ✅' : 'Pending ⏳'}] <br>
-            <p>${p.content || ''}</p>
-            ${p.media_url ? `<img src="${p.media_url}" style="max-width:200px; display:block; margin-top:5px;">` : ''} <br>
-            ${!p.approved ? `<button class="btn btn-green" onclick="approve(${p.id})">Approve</button>` : ''}
-            <button class="btn btn-danger" onclick="del(${p.id})">Delete</button>
+        let media = '';
+        if(p.media_type === 'image') media = `<img src="${p.media_url}">`;
+        if(p.media_type === 'video') media = `<video src="${p.media_url}" controls></video>`;
+
+        postsContainer.innerHTML += `
+          <div class="item-row">
+            <div>
+              <b>@${p.username}</b>: ${p.content || ''} ${media}
+              <br><small>Status: ${p.approved ? '✅ Approved' : '⏳ Pending'}</small>
+            </div>
+            <div>
+              ${!p.approved ? `<button class="btn btn-green" onclick="approvePost(${p.id})">Raggaasisi</button>` : ''}
+              <button class="btn btn-danger" onclick="deletePost(${p.id})">Haqi</button>
+            </div>
+          </div>`;
+      });
+
+      // Users load gochuu
+      const resUsers = await fetch('/api/admin/users');
+      const users = await resUsers.json();
+      const usersContainer = document.getElementById('admin-users-list');
+      usersContainer.innerHTML = '';
+
+      users.forEach(u => {
+        const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
+        usersContainer.innerHTML += `
+          <div class="item-row">
+            <div>
+              <b>@${u.username}</b> - Role: <b>${u.role}</b> ${u.is_admin ? '👑 (Admin)' : ''}
+              <br><small>${isBanned ? '🔴 Uggurameera (Banned)' : '🟢 Nageenya qaba'}</small>
+            </div>
+            <div>
+              ${!u.is_admin ? `<button class="btn btn-primary" onclick="makeAdmin('${u.username}')">Admin Gochi</button>` : ''}
+              ${isBanned ? 
+                `<button class="btn btn-green" onclick="unbanUser('${u.username}')">Unban</button>` : 
+                `<button class="btn btn-danger" onclick="banUser('${u.username}')">Ugguri</button>`
+              }
+            </div>
           </div>`;
       });
     }
 
-    async function approve(postId) {
-      await fetch('/api/admin/approve-post', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({postId}) });
-      loadPending();
+    async function approvePost(postId) {
+      await fetch('/api/admin/approve-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId })
+      });
+      loadAdminData();
     }
 
-    async function del(postId) {
-      await fetch('/api/admin/delete-post', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({postId}) });
-      loadPending();
+    async function deletePost(postId) {
+      await fetch('/api/admin/delete-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId })
+      });
+      loadAdminData();
     }
 
-    async function banUser() {
-      const username = document.getElementById('ban-user-in').value;
-      const days = document.getElementById('ban-days-in').value;
-      await fetch('/api/admin/ban-user', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, days}) });
-      alert(`User @${username} was banned for ${days} days.`);
+    async function banUser(username) {
+      const days = prompt("Guyyaa meeqaaf ugguruu barbaadda? (Fkn: 7)", "7");
+      if(!days) return;
+      await fetch('/api/admin/ban-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, days: parseInt(days) })
+      });
+      loadAdminData();
     }
 
-    loadPending();
+    async function unbanUser(username) {
+      await fetch('/api/admin/unban-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      loadAdminData();
+    }
+
+    async function makeAdmin(username) {
+      if(!confirm(`Dhuguma @${username}f mirga Admin kennuu barbaaddaa?`)) return;
+      const res = await fetch('/api/admin/make-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      alert(data.message || "Milkaa'eera!");
+      loadAdminData();
+    }
+
+    loadAdminData();
   </script>
 </body>
 </html>
