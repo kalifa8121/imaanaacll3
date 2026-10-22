@@ -27,10 +27,10 @@ app.use(compression());
 app.use(express.json({ limit: '1000mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1000mb' }));
 
-// Static files (public folder) qajeelchuu
+// Daandii public folder qajeelchuu
 app.use(express.static(path.join(__dirname, 'public')));
 
-// DIRECT ROUTE: Root irratti index.html akka agarsiisu godhuuf
+// Root URL irratti index.html kallattiin akka qaqqabu godhuu
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -106,7 +106,6 @@ async function startServer() {
 
 startServer();
 
-// AUTH APIS
 app.post('/api/auth/signup', async (req, res) => {
   const { username, password, phone, bio } = req.body;
   try {
@@ -168,7 +167,6 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-// ADMIN API ROUTES
 app.get('/api/admin/pending-posts', async (req, res) => {
   try {
     const posts = await pool.query('SELECT * FROM posts ORDER BY id DESC');
@@ -208,7 +206,6 @@ app.post('/api/admin/ban-user', async (req, res) => {
   }
 });
 
-// WEBRTC & SOCKET REALTIME
 const activeUsers = {};
 
 io.on('connection', (socket) => {
