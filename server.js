@@ -78,7 +78,6 @@ async function initDB() {
       );
     `);
 
-    // Koloniinileen dhabaman yoo jiraatan akka dabalaman godhuuf
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
@@ -90,7 +89,6 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMP DEFAULT NULL;
     `);
 
-    // Gorsaa/Kallattiidhaan User tokkoof Admin hayyama kennuuf (Fkn: Maqaa 'admin' jedhuuf is_admin fi role 'admin' godhuu)
     await pool.query(`
       UPDATE users SET is_admin = TRUE, role = 'admin' WHERE username = 'admin';
     `);
@@ -111,7 +109,6 @@ async function startServer() {
 
 startServer();
 
-// AUTH APIS
 app.post('/api/auth/signup', async (req, res) => {
   const { username, password, phone, bio } = req.body;
   try {
@@ -119,7 +116,6 @@ app.post('/api/auth/signup', async (req, res) => {
     const checkUser = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
     if (checkUser.rows.length > 0) return res.status(400).json({ success: false, message: "Maqaan kun duraan qabameera!" });
     
-    // User jalqabaa yoo ta'e akka Admin ta'uuf hayyama kennuu ni danda'ama, ykn 'user' ta'a
     const userCount = await pool.query('SELECT COUNT(*) FROM users');
     const isAdmin = parseInt(userCount.rows[0].count) === 0;
     const role = isAdmin ? 'admin' : 'user';
@@ -156,7 +152,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// POSTS API
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await pool.query('SELECT * FROM posts WHERE approved = TRUE ORDER BY id DESC LIMIT 20');
@@ -166,7 +161,6 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-// ADMIN APIS (Posts & Users Management)
 app.get('/api/admin/pending-posts', async (req, res) => {
   try {
     const posts = await pool.query('SELECT * FROM posts ORDER BY id DESC');
@@ -225,7 +219,6 @@ app.post('/api/admin/unban-user', async (req, res) => {
   }
 });
 
-// Admin Hayyama kennuuf (Make Admin API)
 app.post('/api/admin/make-admin', async (req, res) => {
   try {
     const { username } = req.body;
@@ -236,7 +229,6 @@ app.post('/api/admin/make-admin', async (req, res) => {
   }
 });
 
-// WEBRTC & SOCKET
 const activeUsers = {};
 
 io.on('connection', (socket) => {
