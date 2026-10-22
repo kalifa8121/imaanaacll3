@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="om">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard - Post & User Control</title>
+  <style>
+    body { font-family: sans-serif; background: #0b141a; color: white; padding: 20px; }
+    .card { background: #111b21; border: 1px solid #2a3942; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-green { background: #00a884; color: white; }
+    .btn-danger { background: #ea4335; color: white; }
+    input { padding: 8px; background: #202c33; border: 1px solid #2a3942; color: white; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <h2>Admin Dashboard (Post Hunda Too'achuu)</h2>
+
+  <!-- BAN USER -->
+  <div class="card">
+    <h3>Maammila Adabuu (Ban User)</h3>
+    <input type="text" id="ban-user-in" placeholder="Username...">
+    <input type="number" id="ban-days-in" placeholder="Guyyoota..." value="3">
+    <button class="btn btn-danger" onclick="banUser()">Ban User 🚫</button>
+  </div>
+
+  <!-- ALL POSTS MODERATION -->
+  <div class="card">
+    <h3>Posts Hunda (Approve / Delete)</h3>
+    <div id="pending-posts"></div>
+  </div>
+
+  <script>
+    async function loadPending() {
+      const res = await fetch('/api/admin/pending-posts');
+      const posts = await res.json();
+      const div = document.getElementById('pending-posts');
+      div.innerHTML = '';
+      posts.forEach(p => {
+        div.innerHTML += `
+          <div style="border-bottom:1px solid #333; padding:10px;">
+            <b>@${p.username}</b> [Status: ${p.approved ? 'Approved ✅' : 'Pending ⏳'}] <br>
+            <p>${p.content || ''}</p>
+            ${p.media_url ? `<img src="${p.media_url}" style="max-width:200px; display:block; margin-top:5px;">` : ''} <br>
+            ${!p.approved ? `<button class="btn btn-green" onclick="approve(${p.id})">Approve</button>` : ''}
+            <button class="btn btn-danger" onclick="del(${p.id})">Delete</button>
+          </div>`;
+      });
+    }
+
+    async function approve(postId) {
+      await fetch('/api/admin/approve-post', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({postId}) });
+      loadPending();
+    }
+
+    async function del(postId) {
+      await fetch('/api/admin/delete-post', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({postId}) });
+      loadPending();
+    }
+
+    async function banUser() {
+      const username = document.getElementById('ban-user-in').value;
+      const days = document.getElementById('ban-days-in').value;
+      await fetch('/api/admin/ban-user', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, days}) });
+      alert(`User @${username} was banned for ${days} days.`);
+    }
+
+    loadPending();
+  </script>
+</body>
+</html>
