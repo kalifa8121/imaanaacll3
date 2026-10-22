@@ -7,30 +7,23 @@
   <style>
     :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --card-bg: #ffffff; --text-dark: #050505; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--text-dark); margin: 0; }
-    
     .navbar { background: #ffffff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
     .nav-title { font-size: 22px; font-weight: bold; color: var(--fb-blue); }
-    
     .container { max-width: 650px; margin: 20px auto; padding: 0 10px; }
     .card { background: var(--card-bg); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); }
-    
     .input-field { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
     .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
     .btn-primary { background: var(--fb-blue); color: white; }
     .btn-green { background: #42b72a; color: white; }
     .btn-danger { background: #fa3e3e; color: white; }
-
     .user-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 8px 0; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .online { background: #31a24c; }
     .offline { background: #b0b3b8; }
-
     .post { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
     .post img, .post video { width: 100%; border-radius: 8px; margin-top: 10px; }
-
     .video-call-box { display: flex; gap: 10px; justify-content: center; background: #000; padding: 10px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; }
     video { width: 45%; max-height: 200px; border-radius: 6px; background: #222; object-fit: cover; }
-
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
   </style>
 </head>
@@ -42,6 +35,9 @@
   </div>
 
   <div class="container">
+
+    <!-- NOTIFICATION BAR -->
+    <div id="notification-banner" class="card" style="display:none; background:#ffebee; border:1px solid #ef9a9a; color:#c62828;"></div>
 
     <!-- AUTH SECTION -->
     <div id="auth-sec" class="card">
@@ -55,25 +51,26 @@
       <p style="text-align: center; cursor: pointer; color: var(--fb-blue);" onclick="toggleAuthMode()">Account hin qabduu? Signup godha</p>
     </div>
 
-    <!-- MAIN APP SUITE -->
+    <!-- MAIN APP -->
     <div id="app-sec" style="display: none;">
 
-      <!-- PROFILE -->
+      <!-- RING STYLE SETTING -->
       <div class="card">
-        <h4>Profaayilii Edittii Gochuu</h4>
-        <input type="text" id="edit-phone" class="input-field" placeholder="Lakkoofsa Bilbilaa...">
-        <textarea id="edit-bio" class="input-field" placeholder="Bio keessan..."></textarea>
-        <button class="btn btn-green" onclick="saveProfile()">Profile Update</button>
+        <h4>🎵 Gosa Sagalee Ringtone Filadhu</h4>
+        <select id="ring-style-select" class="input-field">
+          <option value="classic">Classic Office Phone</option>
+          <option value="modern">Modern Chime</option>
+          <option value="soft">Soft Melody</option>
+        </select>
       </div>
 
-      <!-- FACEBOOK STYLE GROUP CALL ROOM CARD -->
+      <!-- GROUP CALL ROOM -->
       <div class="card" style="background: #e7f3ff; border: 1px solid #bfdbfe;">
         <h4 style="color: var(--fb-blue); margin-top:0;">🎥 Facebook Style Group Room</h4>
-        <p style="font-size:13px; color:#555;">Hirmaattota hunda waliin bifa Room tiin yeroo tokkotti bilbila grupuu jalqabaa!</p>
         <button class="btn btn-primary" onclick="startGroupCall()">Group Call Jalqabi (Join Room)</button>
       </div>
 
-      <!-- ONLINE USERS & CALL -->
+      <!-- ONLINE USERS -->
       <div class="card">
         <h4>Maammiltoota (Users & Direct Call / Chat)</h4>
         <div id="users-list"></div>
@@ -88,20 +85,22 @@
         <button class="btn btn-danger" onclick="endCall()" style="margin-top:10px;">End Call 🚫</button>
       </div>
 
-      <!-- GROUP CHAT -->
+      <!-- GROUP CHAT (Media support added) -->
       <div class="card">
         <h4>Group Chat (Hawaasa Waliif)</h4>
         <div id="group-chat-box" style="height: 140px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
-        <input type="text" id="group-msg-input" class="input-field" placeholder="Ergaa group-aaf...">
-        <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi</button>
+        <input type="text" id="group-msg-input" class="input-field" placeholder="Ergaa text-aaf...">
+        <input type="file" id="group-media-input" class="input-field" accept="image/*,video/*,audio/*">
+        <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi (Media waliin)</button>
       </div>
 
-      <!-- PRIVATE CHAT -->
+      <!-- PRIVATE CHAT (Media support added) -->
       <div class="card" id="private-chat-section" style="display:none;">
         <h4 id="private-chat-title">Direct Chat</h4>
         <div id="private-chat-box" style="height: 120px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
         <input type="text" id="private-msg-input" class="input-field" placeholder="Ergaa dhuunfaa...">
-        <button class="btn btn-green" onclick="sendPrivateMessage()">Ergi</button>
+        <input type="file" id="private-media-input" class="input-field" accept="image/*,video/*,audio/*">
+        <button class="btn btn-green" onclick="sendPrivateMessage()">Ergi (Media waliin)</button>
         <button class="btn btn-danger" onclick="closePrivateChat()" style="margin-top:5px;">Cufi</button>
       </div>
 
@@ -129,7 +128,10 @@
     </div>
   </div>
 
-  <audio id="ringtone" src="https://actions.google.com/sounds/v1/ambiences/office_phone_ring.ogg" loop></audio>
+  <!-- RINGTONES AUDIO SOURCES -->
+  <audio id="ring-classic" src="https://actions.google.com/sounds/v1/ambiences/office_phone_ring.ogg" loop></audio>
+  <audio id="ring-modern" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" loop></audio>
+  <audio id="ring-soft" src="https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" loop></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
