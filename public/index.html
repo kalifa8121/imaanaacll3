@@ -36,10 +36,8 @@
 
   <div class="container">
 
-    <!-- NOTIFICATION BAR -->
     <div id="notification-banner" class="card" style="display:none; background:#ffebee; border:1px solid #ef9a9a; color:#c62828;"></div>
 
-    <!-- AUTH SECTION -->
     <div id="auth-sec" class="card">
       <h3 id="auth-title">Login</h3>
       <input type="text" id="auth-username" class="input-field" placeholder="Username...">
@@ -51,10 +49,8 @@
       <p style="text-align: center; cursor: pointer; color: var(--fb-blue);" onclick="toggleAuthMode()">Account hin qabduu? Signup godha</p>
     </div>
 
-    <!-- MAIN APP -->
     <div id="app-sec" style="display: none;">
 
-      <!-- RING STYLE SETTING -->
       <div class="card">
         <h4>🎵 Gosa Sagalee Ringtone Filadhu</h4>
         <select id="ring-style-select" class="input-field">
@@ -64,28 +60,25 @@
         </select>
       </div>
 
-      <!-- GROUP CALL ROOM -->
       <div class="card" style="background: #e7f3ff; border: 1px solid #bfdbfe;">
         <h4 style="color: var(--fb-blue); margin-top:0;">🎥 Facebook Style Group Room</h4>
         <button class="btn btn-primary" onclick="startGroupCall()">Group Call Jalqabi (Join Room)</button>
       </div>
 
-      <!-- ONLINE USERS -->
       <div class="card">
         <h4>Maammiltoota (Users & Direct Call / Chat)</h4>
         <div id="users-list"></div>
       </div>
 
-      <!-- CALL SCREEN -->
+      <!-- CALL SCREEN (playsinline dabalameera) -->
       <div id="call-screen" class="card" style="display: none;">
         <h4>Video / Voice Call Active</h4>
         <div class="video-call-box" id="video-grid">
-          <video id="local-video" autoplay muted></video>
+          <video id="local-video" autoplay muted playsinline></video>
         </div>
         <button class="btn btn-danger" onclick="endCall()" style="margin-top:10px;">End Call 🚫</button>
       </div>
 
-      <!-- GROUP CHAT (Media support: Suuraa, Sagalee, Vidiyoo) -->
       <div class="card">
         <h4>Group Chat (Hawaasa Waliif)</h4>
         <div id="group-chat-box" style="height: 140px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
@@ -94,7 +87,6 @@
         <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi (Media waliin)</button>
       </div>
 
-      <!-- PRIVATE CHAT (Media support: Suuraa, Sagalee, Vidiyoo) -->
       <div class="card" id="private-chat-section" style="display:none;">
         <h4 id="private-chat-title">Direct Chat</h4>
         <div id="private-chat-box" style="height: 120px; overflow-y: scroll; border: 1px solid #ddd; padding: 8px; margin-bottom: 8px; background: #fafafa;"></div>
@@ -104,7 +96,6 @@
         <button class="btn btn-danger" onclick="closePrivateChat()" style="margin-top:5px;">Cufi</button>
       </div>
 
-      <!-- POST FEED -->
       <div class="card">
         <h4>Maxxansa Haaraa (Post - Suuraa ykn Vidiyoo)</h4>
         <textarea id="post-text" class="input-field" placeholder="Maaltu jira..."></textarea>
@@ -119,7 +110,6 @@
 
   </div>
 
-  <!-- INCOMING CALL MODAL -->
   <div id="call-modal" class="modal">
     <div style="background: #fff; padding: 25px; border-radius: 8px; text-align: center; width: 300px;">
       <h3 id="caller-name-txt">Calling...</h3>
@@ -128,7 +118,6 @@
     </div>
   </div>
 
-  <!-- RINGTONES AUDIO SOURCES -->
   <audio id="ring-classic" src="https://actions.google.com/sounds/v1/ambiences/office_phone_ring.ogg" loop></audio>
   <audio id="ring-modern" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" loop></audio>
   <audio id="ring-soft" src="https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" loop></audio>
