@@ -33,16 +33,12 @@
   </style>
 </head>
 <body>
-
 <div class="navbar">
   <div class="nav-title">ImaanaaCall Social</div>
   <div id="user-head-sec"></div>
 </div>
-
 <div class="container">
-
   <div id="notification-banner" class="card" style="display:none;background:#ffebee;border:1px solid #ef9a9a;color:#c62828;"></div>
-
   <div id="auth-sec" class="card">
     <h3 id="auth-title">Login</h3>
     <form id="auth-form" onsubmit="event.preventDefault(); handleAuth();" autocomplete="on">
@@ -54,9 +50,7 @@
     </form>
     <p style="text-align:center;cursor:pointer;color:var(--fb-blue)" onclick="toggleAuthMode()">Account hin qabduu? Signup godha</p>
   </div>
-
   <div id="app-sec" style="display:none;">
-
     <div class="card">
       <h4>🎵 Gosa Sagalee Ringtone Filadhu</h4>
       <select id="ring-style-select" class="input-field">
@@ -65,17 +59,14 @@
         <option value="soft">Soft Melody</option>
       </select>
     </div>
-
     <div class="card" style="background:#e7f3ff;border:1px solid #bfdbfe">
       <h4 style="color:var(--fb-blue);margin-top:0">🎥 Group Room</h4>
       <button class="btn btn-primary" onclick="startGroupCall()">Group Call Jalqabi (Join Room)</button>
     </div>
-
     <div class="card">
       <h4>Maammiltoota (Users)</h4>
       <div id="users-list"></div>
     </div>
-
     <div id="call-screen" class="card" style="display:none">
       <h4>Video / Voice Call Active</h4>
       <div class="video-call-box" id="video-grid">
@@ -83,7 +74,6 @@
       </div>
       <button class="btn btn-danger" onclick="endCall()" style="margin-top:10px">End Call 🚫</button>
     </div>
-
     <div class="card">
       <h4>Group Chat</h4>
       <div id="group-chat-box" style="height:140px;overflow-y:scroll;border:1px solid #ddd;padding:8px;margin-bottom:8px;background:#fafafa"></div>
@@ -91,7 +81,6 @@
       <input type="file" id="group-media-input" class="input-field" accept="image/*,video/*,audio/*">
       <button class="btn btn-primary" onclick="sendGroupMessage()">Group-tti Ergi</button>
     </div>
-
     <div class="card" id="private-chat-section" style="display:none">
       <h4 id="private-chat-title">Direct Chat</h4>
       <div id="private-chat-box" style="height:120px;overflow-y:scroll;border:1px solid #ddd;padding:8px;margin-bottom:8px;background:#fafafa"></div>
@@ -100,20 +89,16 @@
       <button class="btn btn-green" onclick="sendPrivateMessage()">Ergi</button>
       <button class="btn btn-danger" onclick="closePrivateChat()" style="margin-top:5px">Cufi</button>
     </div>
-
     <div class="card">
       <h4>Post Haaraa</h4>
       <textarea id="post-text" class="input-field" placeholder="Maaltu jira..."></textarea>
       <input type="file" id="post-file" class="input-field" accept="*/*">
       <button class="btn btn-primary" onclick="submitPost()">Post Godhi</button>
     </div>
-
     <h3>Post Feed</h3>
     <div id="feed-container"></div>
-
   </div>
 </div>
-
 <div id="call-modal" class="modal">
   <div style="background:#fff;padding:25px;border-radius:8px;text-align:center;width:100%;max-width:320px">
     <h3 id="caller-name-txt">Calling...</h3>
@@ -121,7 +106,6 @@
     <button class="btn btn-danger" onclick="rejectCall()">Reject 🚫</button>
   </div>
 </div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.1/simplepeer.min.js"></script>
 <script src="app.js"></script>
