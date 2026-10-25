@@ -46,7 +46,7 @@ app.get('/', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// === TURN SERVER (Metered.ca API) ===
+// === TURN SERVER (Mobile Data Fix) ===
 async function getIceServers() {
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -54,7 +54,7 @@ async function getIceServers() {
     { urls: 'stun:stun.nextcloud.com:443' }
   ];
 
-  // 1) Yoo TURN static env var jiru fayyadami
+  // 1) Custom TURN_URL (Env var irraa kallattiin)
   if (process.env.TURN_URL) {
     const urls = process.env.TURN_URL.split(',').map(s => s.trim());
     const username = process.env.TURN_USERNAME || '';
@@ -63,7 +63,7 @@ async function getIceServers() {
     return iceServers;
   }
 
-  // 2) Yoo METERED_API_KEY jiru, credentials haaraa ofiin iyyi
+  // 2) METERED_API_KEY (Ofiin credentials iyyachuuf)
   if (process.env.METERED_API_KEY) {
     try {
       const res = await fetch(
@@ -71,18 +71,13 @@ async function getIceServers() {
       );
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
-          // data is list of ICE servers
-          data.forEach(s => iceServers.push(s));
-        }
+        if (Array.isArray(data)) data.forEach(s => iceServers.push(s));
       }
-    } catch (e) {
-      console.error('Metered API error:', e);
-    }
+    } catch (e) { console.error('Metered API err:', e); }
   }
 
-  // 3) Fallback: OpenRelay (yoo API Key hin jiraanne)
-  if (!process.env.METERED_API_KEY && !process.env.TURN_URL) {
+  // 3) Fallback: OpenRelay
+  if (!process.env.TURN_URL && !process.env.METERED_API_KEY) {
     iceServers.push({
       urls: [
         'turn:openrelay.metered.ca:80',
@@ -93,7 +88,6 @@ async function getIceServers() {
       credential: 'openrelayproject'
     });
   }
-
   return iceServers;
 }
 
@@ -102,7 +96,6 @@ app.get('/api/ice-servers', async (req, res) => {
     const servers = await getIceServers();
     res.json({ iceServers: servers });
   } catch (e) {
-    console.error(e);
     res.status(500).json({ error: 'Failed to get ICE servers' });
   }
 });
@@ -150,7 +143,6 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
@@ -161,11 +153,9 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMP DEFAULT NULL;
     `);
-
     await pool.query(
       `UPDATE users SET is_admin = TRUE, role = 'admin' WHERE username = 'admin';`
     );
-
     console.log('Database initialized successfully.');
   } catch (err) {
     console.error('DB Initialization Error:', err);
@@ -190,11 +180,9 @@ app.post('/api/auth/signup', async (req, res) => {
     const checkUser = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
     if (checkUser.rows.length > 0)
       return res.status(400).json({ success: false, message: 'Maqaan kun duraan qabameera!' });
-
     const userCount = await pool.query('SELECT COUNT(*) FROM users');
     const isAdmin = parseInt(userCount.rows[0].count) === 0;
     const role = isAdmin ? 'admin' : 'user';
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRes = await pool.query(
       'INSERT INTO users (username, password, phone, bio, role, is_admin) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, username, is_admin, is_vip, role',
@@ -212,15 +200,11 @@ app.post('/api/auth/login', async (req, res) => {
     const userRes = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (userRes.rows.length === 0)
       return res.status(400).json({ success: false, message: 'Maqaan akkasii hin jiru!' });
-
     const user = userRes.rows[0];
     if (user.banned_until && new Date(user.banned_until) > new Date())
       return res.status(403).json({ success: false, message: `Account'n keessan hanga ${user.banned_until}tti ban ta'eera!` });
-
     const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass)
-      return res.status(400).json({ success: false, message: 'Password dogoggora!' });
-
+    if (!validPass) return res.status(400).json({ success: false, message: 'Password dogoggora!' });
     delete user.password;
     res.json({ success: true, user });
   } catch (err) {
@@ -231,9 +215,7 @@ app.post('/api/auth/login', async (req, res) => {
 // === POSTS ===
 app.get('/api/posts', async (req, res) => {
   try {
-    const posts = await pool.query(
-      'SELECT * FROM posts WHERE approved = TRUE ORDER BY id DESC LIMIT 20'
-    );
+    const posts = await pool.query('SELECT * FROM posts WHERE approved = TRUE ORDER BY id DESC LIMIT 20');
     res.json(posts.rows);
   } catch { res.status(500).json({ success: false }); }
 });
@@ -243,11 +225,9 @@ app.get('/api/messages/:user1/:user2', async (req, res) => {
   try {
     const { user1, user2 } = req.params;
     const r = await pool.query(
-      `SELECT sender, receiver, message, media_url, media_type, created_at
-       FROM private_messages
+      `SELECT sender, receiver, message, media_url, media_type, created_at FROM private_messages
        WHERE (sender = $1 AND receiver = $2) OR (sender = $2 AND receiver = $1)
-       ORDER BY id ASC LIMIT 200`,
-      [user1, user2]
+       ORDER BY id ASC LIMIT 200`, [user1, user2]
     );
     res.json(r.rows);
   } catch { res.status(500).json({ success: false }); }
@@ -260,28 +240,18 @@ app.get('/api/admin/pending-posts', async (req, res) => {
     res.json(posts.rows);
   } catch { res.status(500).json({ success: false }); }
 });
-
 app.post('/api/admin/approve-post', async (req, res) => {
-  try {
-    await pool.query('UPDATE posts SET approved = TRUE WHERE id = $1', [req.body.postId]);
-    res.json({ success: true });
-  } catch { res.status(500).json({ success: false }); }
+  try { await pool.query('UPDATE posts SET approved = TRUE WHERE id = $1', [req.body.postId]); res.json({ success: true }); } catch { res.status(500).json({ success: false }); }
 });
-
 app.post('/api/admin/delete-post', async (req, res) => {
-  try {
-    await pool.query('DELETE FROM posts WHERE id = $1', [req.body.postId]);
-    res.json({ success: true });
-  } catch { res.status(500).json({ success: false }); }
+  try { await pool.query('DELETE FROM posts WHERE id = $1', [req.body.postId]); res.json({ success: true }); } catch { res.status(500).json({ success: false }); }
 });
-
 app.get('/api/admin/users', async (req, res) => {
   try {
     const users = await pool.query('SELECT username, role, is_admin, banned_until FROM users');
     res.json(users.rows);
   } catch { res.status(500).json({ success: false }); }
 });
-
 app.post('/api/admin/ban-user', async (req, res) => {
   try {
     const { username, days } = req.body;
@@ -291,24 +261,15 @@ app.post('/api/admin/ban-user', async (req, res) => {
     res.json({ success: true });
   } catch { res.status(500).json({ success: false }); }
 });
-
 app.post('/api/admin/unban-user', async (req, res) => {
-  try {
-    await pool.query('UPDATE users SET banned_until = NULL WHERE username = $1', [req.body.username]);
-    res.json({ success: true });
-  } catch { res.status(500).json({ success: false }); }
+  try { await pool.query('UPDATE users SET banned_until = NULL WHERE username = $1', [req.body.username]); res.json({ success: true }); } catch { res.status(500).json({ success: false }); }
 });
-
 app.post('/api/admin/make-admin', async (req, res) => {
-  try {
-    await pool.query("UPDATE users SET is_admin = TRUE, role = 'admin' WHERE username = $1", [req.body.username]);
-    res.json({ success: true, message: `@${req.body.username} amma Admin ta'eera!` });
-  } catch { res.status(500).json({ success: false }); }
+  try { await pool.query("UPDATE users SET is_admin = TRUE, role = 'admin' WHERE username = $1", [req.body.username]); res.json({ success: true, message: `@${req.body.username} amma Admin ta'eera!` }); } catch { res.status(500).json({ success: false }); }
 });
 
 // === SOCKET.IO ===
 const activeUsers = {};
-
 function findSocketByUsername(username) {
   return Object.keys(activeUsers).find(k => activeUsers[k].username === username);
 }
@@ -317,12 +278,8 @@ io.on('connection', (socket) => {
   socket.on('register-user', async (username) => {
     activeUsers[socket.id] = { id: socket.id, username };
     broadcastUserList();
-
     try {
-      const missed = await pool.query(
-        'SELECT * FROM missed_calls WHERE receiver = $1 ORDER BY id DESC',
-        [username]
-      );
+      const missed = await pool.query('SELECT * FROM missed_calls WHERE receiver = $1 ORDER BY id DESC', [username]);
       if (missed.rows.length > 0) {
         socket.emit('missed-calls-notification', missed.rows);
         await pool.query('DELETE FROM missed_calls WHERE receiver = $1', [username]);
@@ -335,9 +292,7 @@ io.on('connection', (socket) => {
       const allUsersRes = await pool.query('SELECT username, avatar, is_vip FROM users');
       const onlineUsernames = Object.values(activeUsers).map(u => u.username);
       const userList = allUsersRes.rows.map(u => ({
-        username: u.username,
-        avatar: u.avatar,
-        is_vip: u.is_vip,
+        username: u.username, avatar: u.avatar, is_vip: u.is_vip,
         isOnline: onlineUsernames.includes(u.username)
       }));
       io.emit('update-user-list', userList);
@@ -348,22 +303,18 @@ io.on('connection', (socket) => {
     const targetSocket = findSocketByUsername(data.userToCall);
     if (targetSocket) {
       io.to(targetSocket).emit('incoming-call', {
-        signal: data.signalData,
-        from: socket.id,
-        callerName: data.callerName,
-        isVideo: data.isVideo
+        signal: data.signalData, from: socket.id,
+        callerName: data.callerName, isVideo: data.isVideo
       });
     } else {
-      await pool.query(
-        'INSERT INTO missed_calls (receiver, caller, call_type) VALUES ($1,$2,$3)',
-        [data.userToCall, data.callerName, data.isVideo ? 'Video' : 'Voice']
-      );
+      await pool.query('INSERT INTO missed_calls (receiver, caller, call_type) VALUES ($1,$2,$3)',
+        [data.userToCall, data.callerName, data.isVideo ? 'Video' : 'Voice']);
       socket.emit('call-failed-offline');
     }
   });
 
   socket.on('accept-call', (data) => io.to(data.to).emit('call-accepted', data.signal));
-  socket.on('reject-call',  (data) => io.to(data.to).emit('call-rejected'));
+  socket.on('reject-call', (data) => io.to(data.to).emit('call-rejected'));
 
   socket.on('ice-candidate', (data) => {
     if (data.toUsername) {
@@ -376,14 +327,8 @@ io.on('connection', (socket) => {
 
   socket.on('join-group-call', () => socket.broadcast.emit('user-joined-group', socket.id));
   socket.on('leave-group-call', () => socket.broadcast.emit('user-left-group', socket.id));
-
-  socket.on('group-signal', (data) =>
-    io.to(data.to).emit('group-signal', { signal: data.signal, from: socket.id })
-  );
-
-  socket.on('group-ice-candidate', (data) =>
-    io.to(data.to).emit('group-ice-candidate', { candidate: data.candidate, from: socket.id })
-  );
+  socket.on('group-signal', (data) => io.to(data.to).emit('group-signal', { signal: data.signal, from: socket.id }));
+  socket.on('group-ice-candidate', (data) => io.to(data.to).emit('group-ice-candidate', { candidate: data.candidate, from: socket.id }));
 
   socket.on('group-chat-message', (data) => io.emit('group-chat-message', data));
 
@@ -391,19 +336,15 @@ io.on('connection', (socket) => {
     const targetSocket = findSocketByUsername(data.receiver);
     if (targetSocket) io.to(targetSocket).emit('private-message', data);
     try {
-      await pool.query(
-        'INSERT INTO private_messages (sender, receiver, message, media_url, media_type) VALUES ($1,$2,$3,$4,$5)',
-        [data.sender, data.receiver, data.message || null, data.mediaUrl || null, data.mediaType || null]
-      );
+      await pool.query('INSERT INTO private_messages (sender, receiver, message, media_url, media_type) VALUES ($1,$2,$3,$4,$5)',
+        [data.sender, data.receiver, data.message || null, data.mediaUrl || null, data.mediaType || null]);
     } catch (e) { console.error('save msg err:', e.message); }
   });
 
   socket.on('create-post', async (data) => {
     try {
-      const r = await pool.query(
-        'INSERT INTO posts (username, content, media_url, media_type, approved) VALUES ($1,$2,$3,$4,FALSE) RETURNING *',
-        [data.username, data.content, data.mediaUrl || null, data.mediaType || null]
-      );
+      const r = await pool.query('INSERT INTO posts (username, content, media_url, media_type, approved) VALUES ($1,$2,$3,$4,FALSE) RETURNING *',
+        [data.username, data.content, data.mediaUrl || null, data.mediaType || null]);
       socket.emit('post-submitted-silent', r.rows[0]);
     } catch (err) { console.error(err); }
   });
