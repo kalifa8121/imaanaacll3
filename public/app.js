@@ -14,7 +14,7 @@ let pendingIceCandidates = [];
 let iceServersConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 let peerSetupTimeout = null;
 
-// ============ ICE SERVERS (TURN) ============
+// === ICE SERVERS (TURN) ===
 async function loadIceServers() {
   try {
     const res = await fetch('/api/ice-servers');
@@ -32,7 +32,7 @@ async function loadIceServers() {
 }
 loadIceServers();
 
-// ============ RINGTONE (Web Audio API) ============
+// === RINGTONE (Web Audio API) ===
 let audioCtx = null;
 let ringtoneTimer = null;
 
@@ -93,7 +93,7 @@ function stopRingtone() {
   if (ringtoneTimer) { clearInterval(ringtoneTimer); ringtoneTimer = null; }
 }
 
-// ============ AUTH ============
+// === AUTH ===
 function toggleAuthMode() {
   isSignup = !isSignup;
   document.getElementById('auth-title').innerText = isSignup ? 'Signup' : 'Login';
@@ -132,7 +132,7 @@ async function handleAuth() {
   loadPosts();
 }
 
-// ============ Missed calls ============
+// === Missed calls ===
 socket.on('missed-calls-notification', list => {
   const banner = document.getElementById('notification-banner');
   if (!banner) return;
@@ -142,7 +142,7 @@ socket.on('missed-calls-notification', list => {
   banner.innerHTML = txt + '</ul>';
 });
 
-// ============ User list ============
+// === User list ===
 socket.on('update-user-list', users => {
   const container = document.getElementById('users-list');
   if (!container || !currentUser) return;
@@ -165,7 +165,7 @@ socket.on('update-user-list', users => {
   });
 });
 
-// ============ Group chat ============
+// === Group chat ===
 function sendGroupMessage() {
   const input = document.getElementById('group-msg-input');
   const fileInput = document.getElementById('group-media-input');
@@ -197,7 +197,7 @@ socket.on('group-chat-message', data => {
   box.scrollTop = box.scrollHeight;
 });
 
-// ============ Private chat ============
+// === Private chat ===
 async function openPrivateChat(username) {
   activeChatUser = username;
   document.getElementById('private-chat-title').innerText = `Chat @${username}`;
@@ -270,11 +270,11 @@ socket.on('private-message', data => {
   }
 });
 
-// ============ SIGNAL CLASSIFICATION ============
+// === SIGNAL CLASSIFICATION ===
 function isSdp(sig) { return sig && (sig.sdp || sig.type === 'offer' || sig.type === 'answer'); }
 function isIce(sig) { return sig && (sig.candidate || sig.type === 'candidate'); }
 
-// ============ ICE QUEUE HELPERS ============
+// === ICE QUEUE HELPERS ===
 function flushPendingIce() {
   if (!peer) return;
   const q = pendingIceCandidates.slice();
@@ -283,7 +283,7 @@ function flushPendingIce() {
 }
 function clearIceQueue() { pendingIceCandidates = []; }
 
-// ============ CALL ENGINE (1-on-1) ============
+// === CALL ENGINE (1-on-1) ===
 async function startCall(userToCall, isVideo) {
   if (!navigator.mediaDevices?.getUserMedia)
     return alert('Camera/Mic requires HTTPS. Render URL (https://) fayyadami.');
@@ -416,6 +416,7 @@ async function acceptCall() {
     peer.on('error', err => { console.error('Peer err:', err); alert('Connection failed: ' + err.message); endCall(); });
     peer.on('close', () => endCall());
 
+    // 🔑 Feed offer, then flush any queued ICE
     peer.signal(incomingData.signal);
     setTimeout(flushPendingIce, 100);
 
@@ -433,7 +434,7 @@ function rejectCall() {
   incomingData = null;
 }
 
-// ============ SIGNALING LISTENERS ============
+// === SIGNALING LISTENERS ===
 socket.on('call-accepted', signal => { if (peer) { try { peer.signal(signal); } catch(e){ console.warn(e); } } });
 
 socket.on('call-rejected', () => {
@@ -455,7 +456,7 @@ socket.on('call-failed-offline', () => {
   endCall();
 });
 
-// ============ GROUP CALL ============
+// === GROUP CALL ===
 async function startGroupCall() {
   if (!navigator.mediaDevices?.getUserMedia) return alert('Camera/Mic requires HTTPS');
   try {
@@ -523,7 +524,7 @@ socket.on('user-left-group', userId => {
   if (vid) vid.remove();
 });
 
-// ============ END CALL ============
+// === END CALL ===
 function endCall() {
   stopRingtone();
   clearIceQueue();
@@ -541,7 +542,7 @@ function endCall() {
   incomingData = null;
 }
 
-// ============ POSTS ============
+// === POSTS ===
 function submitPost() {
   const content = document.getElementById('post-text').value;
   const fileInput = document.getElementById('post-file');
@@ -581,7 +582,7 @@ async function loadPosts() {
   });
 }
 
-// ============ Network resilience ============
+// === Network resilience ===
 window.addEventListener('online', () => {
   console.log('Network online');
   if (currentUser && socket.connected) socket.emit('register-user', currentUser.username);
