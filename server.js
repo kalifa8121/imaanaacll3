@@ -19,7 +19,7 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 10000;
 
-// Neon / Postgres URL — sslmode param haqii, ssl manually qindeessi
+// === DATABASE ===
 let dbUrl = process.env.DATABASE_URL;
 if (dbUrl && dbUrl.includes('sslmode=')) {
   try {
@@ -46,20 +46,43 @@ app.get('/', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// ===== ICE SERVERS (TURN = mobile cellular fix) =====
-app.get('/api/ice-servers', (req, res) => {
+// === TURN SERVER (Metered.ca API) ===
+async function getIceServers() {
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun.nextcloud.com:443' }
   ];
 
+  // 1) Yoo TURN static env var jiru fayyadami
   if (process.env.TURN_URL) {
     const urls = process.env.TURN_URL.split(',').map(s => s.trim());
     const username = process.env.TURN_USERNAME || '';
     const credential = process.env.TURN_CREDENTIAL || '';
     urls.forEach(url => iceServers.push({ urls: url, username, credential }));
-  } else {
+    return iceServers;
+  }
+
+  // 2) Yoo METERED_API_KEY jiru, credentials haaraa ofiin iyyi
+  if (process.env.METERED_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://imaanaacall.metered.live/api/v1/turn/credentials?apiKey=${process.env.METERED_API_KEY}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // data is list of ICE servers
+          data.forEach(s => iceServers.push(s));
+        }
+      }
+    } catch (e) {
+      console.error('Metered API error:', e);
+    }
+  }
+
+  // 3) Fallback: OpenRelay (yoo API Key hin jiraanne)
+  if (!process.env.METERED_API_KEY && !process.env.TURN_URL) {
     iceServers.push({
       urls: [
         'turn:openrelay.metered.ca:80',
@@ -71,10 +94,20 @@ app.get('/api/ice-servers', (req, res) => {
     });
   }
 
-  res.json({ iceServers });
+  return iceServers;
+}
+
+app.get('/api/ice-servers', async (req, res) => {
+  try {
+    const servers = await getIceServers();
+    res.json({ iceServers: servers });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to get ICE servers' });
+  }
 });
 
-// ===== DB INIT =====
+// === DB INIT ===
 async function initDB() {
   try {
     await pool.query(`
@@ -148,7 +181,7 @@ async function startServer() {
 }
 startServer();
 
-// ===== AUTH =====
+// === AUTH ===
 app.post('/api/auth/signup', async (req, res) => {
   const { username, password, phone, bio } = req.body;
   try {
@@ -195,7 +228,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ===== POSTS =====
+// === POSTS ===
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await pool.query(
@@ -205,7 +238,7 @@ app.get('/api/posts', async (req, res) => {
   } catch { res.status(500).json({ success: false }); }
 });
 
-// ===== MESSAGES HISTORY =====
+// === MESSAGES HISTORY ===
 app.get('/api/messages/:user1/:user2', async (req, res) => {
   try {
     const { user1, user2 } = req.params;
@@ -220,7 +253,7 @@ app.get('/api/messages/:user1/:user2', async (req, res) => {
   } catch { res.status(500).json({ success: false }); }
 });
 
-// ===== ADMIN =====
+// === ADMIN ===
 app.get('/api/admin/pending-posts', async (req, res) => {
   try {
     const posts = await pool.query('SELECT * FROM posts ORDER BY id DESC');
@@ -273,7 +306,7 @@ app.post('/api/admin/make-admin', async (req, res) => {
   } catch { res.status(500).json({ success: false }); }
 });
 
-// ===== SOCKET.IO =====
+// === SOCKET.IO ===
 const activeUsers = {};
 
 function findSocketByUsername(username) {
@@ -281,7 +314,6 @@ function findSocketByUsername(username) {
 }
 
 io.on('connection', (socket) => {
-
   socket.on('register-user', async (username) => {
     activeUsers[socket.id] = { id: socket.id, username };
     broadcastUserList();
@@ -312,7 +344,6 @@ io.on('connection', (socket) => {
     } catch (err) { console.error(err); }
   }
 
-  // ---- 1-on-1 call: offer ----
   socket.on('call-user', async (data) => {
     const targetSocket = findSocketByUsername(data.userToCall);
     if (targetSocket) {
@@ -334,7 +365,6 @@ io.on('connection', (socket) => {
   socket.on('accept-call', (data) => io.to(data.to).emit('call-accepted', data.signal));
   socket.on('reject-call',  (data) => io.to(data.to).emit('call-rejected'));
 
-  // ---- Trickle ICE (1-on-1) ----
   socket.on('ice-candidate', (data) => {
     if (data.toUsername) {
       const targetSocket = findSocketByUsername(data.toUsername);
@@ -344,7 +374,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ---- Group call ----
   socket.on('join-group-call', () => socket.broadcast.emit('user-joined-group', socket.id));
   socket.on('leave-group-call', () => socket.broadcast.emit('user-left-group', socket.id));
 
@@ -356,7 +385,6 @@ io.on('connection', (socket) => {
     io.to(data.to).emit('group-ice-candidate', { candidate: data.candidate, from: socket.id })
   );
 
-  // ---- Chat ----
   socket.on('group-chat-message', (data) => io.emit('group-chat-message', data));
 
   socket.on('private-message', async (data) => {
@@ -370,7 +398,6 @@ io.on('connection', (socket) => {
     } catch (e) { console.error('save msg err:', e.message); }
   });
 
-  // ---- Posts ----
   socket.on('create-post', async (data) => {
     try {
       const r = await pool.query(
