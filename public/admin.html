@@ -3,58 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ImaanaaCall - Admin Dashboard</title>
+  <title>ImaanaaCall - Admin</title>
   <style>
-    :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --card-bg: #ffffff; --text-dark: #050505; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--fb-bg); color: var(--text-dark); margin: 0; padding: 20px; }
-    .container { max-width: 800px; margin: auto; }
-    .card { background: var(--card-bg); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .btn { padding: 8px 14px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
-    .btn-green { background: #42b72a; color: white; }
-    .btn-danger { background: #fa3e3e; color: white; }
-    .btn-primary { background: var(--fb-blue); color: white; }
-    .item-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
-    img, video { max-width: 100px; border-radius: 4px; }
+    :root{--fb-blue:#1877f2;--fb-bg:#f0f2f5;--card-bg:#fff;--text-dark:#050505}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--fb-bg);color:var(--text-dark);margin:0;padding:15px}
+    .container{max-width:800px;margin:auto}
+    .card{background:var(--card-bg);border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .btn{padding:8px 14px;border-radius:6px;border:none;font-weight:bold;cursor:pointer}
+    .btn-green{background:#42b72a;color:#fff}
+    .btn-danger{background:#fa3e3e;color:#fff}
+    .btn-primary{background:var(--fb-blue);color:#fff}
+    .item-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;padding:10px 0;gap:10px;flex-wrap:wrap}
+    img,video{max-width:100px;border-radius:4px}
   </style>
 </head>
 <body>
-
   <div class="container">
-    <h2>👑 Admin Dashboard (To'annoo Guutuu)</h2>
-    <a href="index.html" class="btn btn-green" style="text-decoration: none; display:inline-block; margin-bottom:15px;">Gara Appii Deebi'uudhaaf</a>
-
-    <!-- POSTS CONTROL -->
-    <div class="card">
-      <h3>Maxxansaalee (Posts) Hunda To'achuu fi Raggaasisuu</h3>
-      <div id="admin-posts-list"></div>
-    </div>
-
-    <!-- USERS CONTROL (BAN / UNBAN / MAKE ADMIN) -->
-    <div class="card">
-      <h3>Maamiltota To'achuu (Ban, Unban & Make Admin)</h3>
-      <div id="admin-users-list"></div>
-    </div>
+    <h2>👑 Admin Dashboard</h2>
+    <a href="index.html" class="btn btn-green" style="text-decoration:none;display:inline-block;margin-bottom:15px">← Gara Appii</a>
+    <div class="card"><h3>Posts To'achuu</h3><div id="admin-posts-list"></div></div>
+    <div class="card"><h3>Users (Ban / Unban / Make Admin)</h3><div id="admin-users-list"></div></div>
   </div>
-
   <script>
     async function loadAdminData() {
-      // Posts load gochuu
-      const resPosts = await fetch('/api/admin/pending-posts');
-      const posts = await resPosts.json();
-      const postsContainer = document.getElementById('admin-posts-list');
-      postsContainer.innerHTML = '';
-      
+      const posts = await (await fetch('/api/admin/pending-posts')).json();
+      const pc = document.getElementById('admin-posts-list');
+      pc.innerHTML = '';
       posts.forEach(p => {
         let media = '';
-        if(p.media_type === 'image') media = `<img src="${p.media_url}">`;
-        if(p.media_type === 'video') media = `<video src="${p.media_url}" controls></video>`;
-
-        postsContainer.innerHTML += `
+        if (p.media_type === 'image') media = `<img src="${p.media_url}">`;
+        if (p.media_type === 'video') media = `<video src="${p.media_url}" controls></video>`;
+        pc.innerHTML += `
           <div class="item-row">
-            <div>
-              <b>@${p.username}</b>: ${p.content || ''} ${media}
-              <br><small>Status: ${p.approved ? '✅ Approved' : '⏳ Pending'}</small>
-            </div>
+            <div><b>@${p.username}</b>: ${p.content || ''} ${media}
+              <br><small>Status: ${p.approved ? '✅ Approved' : '⏳ Pending'}</small></div>
             <div>
               ${!p.approved ? `<button class="btn btn-green" onclick="approvePost(${p.id})">Raggaasisi</button>` : ''}
               <button class="btn btn-danger" onclick="deletePost(${p.id})">Haqi</button>
@@ -62,81 +44,29 @@
           </div>`;
       });
 
-      // Users load gochuu
-      const resUsers = await fetch('/api/admin/users');
-      const users = await resUsers.json();
-      const usersContainer = document.getElementById('admin-users-list');
-      usersContainer.innerHTML = '';
-
+      const users = await (await fetch('/api/admin/users')).json();
+      const uc = document.getElementById('admin-users-list');
+      uc.innerHTML = '';
       users.forEach(u => {
         const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
-        usersContainer.innerHTML += `
+        uc.innerHTML += `
           <div class="item-row">
+            <div><b>@${u.username}</b> — ${u.role} ${u.is_admin ? '👑' : ''}
+              <br><small>${isBanned ? '🔴 Banned' : '🟢 Active'}</small></div>
             <div>
-              <b>@${u.username}</b> - Role: <b>${u.role}</b> ${u.is_admin ? '👑 (Admin)' : ''}
-              <br><small>${isBanned ? '🔴 Uggurameera (Banned)' : '🟢 Nageenya qaba'}</small>
-            </div>
-            <div>
-              ${!u.is_admin ? `<button class="btn btn-primary" onclick="makeAdmin('${u.username}')">Admin Gochi</button>` : ''}
-              ${isBanned ? 
-                `<button class="btn btn-green" onclick="unbanUser('${u.username}')">Unban</button>` : 
-                `<button class="btn btn-danger" onclick="banUser('${u.username}')">Ugguri</button>`
-              }
+              ${!u.is_admin ? `<button class="btn btn-primary" onclick="makeAdmin('${u.username}')">Admin</button>` : ''}
+              ${isBanned
+                ? `<button class="btn btn-green" onclick="unbanUser('${u.username}')">Unban</button>`
+                : `<button class="btn btn-danger" onclick="banUser('${u.username}')">Ugguri</button>`}
             </div>
           </div>`;
       });
     }
-
-    async function approvePost(postId) {
-      await fetch('/api/admin/approve-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId })
-      });
-      loadAdminData();
-    }
-
-    async function deletePost(postId) {
-      await fetch('/api/admin/delete-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId })
-      });
-      loadAdminData();
-    }
-
-    async function banUser(username) {
-      const days = prompt("Guyyaa meeqaaf ugguruu barbaadda? (Fkn: 7)", "7");
-      if(!days) return;
-      await fetch('/api/admin/ban-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, days: parseInt(days) })
-      });
-      loadAdminData();
-    }
-
-    async function unbanUser(username) {
-      await fetch('/api/admin/unban-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      });
-      loadAdminData();
-    }
-
-    async function makeAdmin(username) {
-      if(!confirm(`Dhuguma @${username}f mirga Admin kennuu barbaaddaa?`)) return;
-      const res = await fetch('/api/admin/make-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      });
-      const data = await res.json();
-      alert(data.message || "Milkaa'eera!");
-      loadAdminData();
-    }
-
+    async function approvePost(id){await fetch('/api/admin/approve-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postId:id})});loadAdminData();}
+    async function deletePost(id){await fetch('/api/admin/delete-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postId:id})});loadAdminData();}
+    async function banUser(u){const d=prompt('Guyyaa meeqaaf?','7');if(!d)return;await fetch('/api/admin/ban-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,days:parseInt(d)})});loadAdminData();}
+    async function unbanUser(u){await fetch('/api/admin/unban-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});loadAdminData();}
+    async function makeAdmin(u){if(!confirm(`@${u}f admin kennuu?`))return;const r=await fetch('/api/admin/make-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});const d=await r.json();alert(d.message||'OK');loadAdminData();}
     loadAdminData();
   </script>
 </body>
