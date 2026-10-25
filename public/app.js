@@ -14,7 +14,7 @@ let pendingIceCandidates = [];
 let iceServersConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 let peerSetupTimeout = null;
 
-// === ICE SERVERS (TURN) ===
+// === ICE SERVERS (Mobile Data Fix - Guard) ===
 async function loadIceServers() {
   try {
     const res = await fetch('/api/ice-servers');
@@ -30,6 +30,12 @@ async function loadIceServers() {
     console.error('ICE load failed:', e);
   }
 }
+// Guard: Peer connection uumuu dura mirkaneessi
+async function ensureIceServersLoaded() {
+  if (!iceServersConfig.iceServers || iceServersConfig.iceServers.length <= 1) {
+    await loadIceServers();
+  }
+}
 loadIceServers();
 
 // === RINGTONE (Web Audio API) ===
@@ -41,7 +47,6 @@ function ensureAudioCtx() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
-
 function unlockAudio() {
   try {
     ensureAudioCtx();
@@ -52,7 +57,6 @@ function unlockAudio() {
     o.start(); o.stop(audioCtx.currentTime + 0.05);
   } catch (e) { console.warn('unlock audio failed:', e); }
 }
-
 function playTone(freq, duration, type = 'sine', vol = 0.25) {
   try {
     const ctx = ensureAudioCtx();
@@ -68,7 +72,6 @@ function playTone(freq, duration, type = 'sine', vol = 0.25) {
     osc.start(t); osc.stop(t + duration + 0.05);
   } catch (e) { console.warn('tone failed:', e); }
 }
-
 function playRingPattern(style) {
   if (style === 'modern') {
     playTone(880, 0.15); setTimeout(() => playTone(1100, 0.15), 200);
@@ -81,14 +84,12 @@ function playRingPattern(style) {
     setTimeout(() => playTone(800, 0.35, 'sine', 0.3), 500);
   }
 }
-
 function startRingtone() {
   stopRingtone();
   const style = document.getElementById('ring-style-select')?.value || 'classic';
   playRingPattern(style);
   ringtoneTimer = setInterval(() => playRingPattern(style), 2200);
 }
-
 function stopRingtone() {
   if (ringtoneTimer) { clearInterval(ringtoneTimer); ringtoneTimer = null; }
 }
@@ -99,40 +100,31 @@ function toggleAuthMode() {
   document.getElementById('auth-title').innerText = isSignup ? 'Signup' : 'Login';
   document.getElementById('auth-btn').innerText = isSignup ? 'Signup' : 'Login';
 }
-
 async function handleAuth() {
   unlockAudio();
-
   const username = document.getElementById('auth-username').value.trim();
   const password = document.getElementById('auth-password').value;
   const phone    = document.getElementById('auth-phone').value;
   const bio      = document.getElementById('auth-bio').value;
-
   const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
   const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password, phone, bio })
   });
   const data = await res.json();
   if (!data.success) return alert(data.message);
-
   currentUser = data.user;
   document.getElementById('auth-sec').style.display = 'none';
   document.getElementById('app-sec').style.display = 'block';
-
-  const adminLink = currentUser.is_admin
-    ? `<a href="admin.html" style="color:orange;margin-left:8px;font-weight:bold">👑 Admin</a>` : '';
-
+  const adminLink = currentUser.is_admin ? `<a href="admin.html" style="color:orange;margin-left:8px;font-weight:bold">👑 Admin</a>` : '';
   document.getElementById('user-head-sec').innerHTML =
     `<b>@${currentUser.username}</b> ${adminLink}
      <button onclick="location.reload()" class="btn btn-danger" style="width:auto;padding:5px 10px;margin-left:5px">Logout</button>`;
-
   socket.emit('register-user', currentUser.username);
   loadPosts();
 }
 
-// === Missed calls ===
+// === MISSED CALLS ===
 socket.on('missed-calls-notification', list => {
   const banner = document.getElementById('notification-banner');
   if (!banner) return;
@@ -142,7 +134,7 @@ socket.on('missed-calls-notification', list => {
   banner.innerHTML = txt + '</ul>';
 });
 
-// === User list ===
+// === USER LIST ===
 socket.on('update-user-list', users => {
   const container = document.getElementById('users-list');
   if (!container || !currentUser) return;
@@ -150,10 +142,7 @@ socket.on('update-user-list', users => {
   users.filter(u => u.username !== currentUser.username).forEach(u => {
     container.innerHTML += `
       <div class="user-list-item">
-        <div>
-          <span class="status-dot ${u.isOnline ? 'online' : 'offline'}"></span>
-          <b>@${u.username}</b>
-        </div>
+        <div><span class="status-dot ${u.isOnline ? 'online' : 'offline'}"></span> <b>@${u.username}</b></div>
         <div>
           <button class="btn btn-primary" style="width:auto;padding:6px 10px" onclick="openPrivateChat('${u.username}')">Chat 💬</button>
           ${u.isOnline ? `
@@ -165,13 +154,12 @@ socket.on('update-user-list', users => {
   });
 });
 
-// === Group chat ===
+// === GROUP CHAT ===
 function sendGroupMessage() {
   const input = document.getElementById('group-msg-input');
   const fileInput = document.getElementById('group-media-input');
   const message = input.value.trim();
   const file = fileInput.files[0];
-
   if (file) {
     if (file.size > 20 * 1024 * 1024) return alert('File guddaa dha (max 20MB)');
     const reader = new FileReader();
@@ -186,7 +174,6 @@ function sendGroupMessage() {
     input.value = '';
   }
 }
-
 socket.on('group-chat-message', data => {
   const box = document.getElementById('group-chat-box');
   let media = '';
@@ -197,7 +184,7 @@ socket.on('group-chat-message', data => {
   box.scrollTop = box.scrollHeight;
 });
 
-// === Private chat ===
+// === PRIVATE CHAT ===
 async function openPrivateChat(username) {
   activeChatUser = username;
   document.getElementById('private-chat-title').innerText = `Chat @${username}`;
@@ -212,7 +199,6 @@ async function openPrivateChat(username) {
     box.scrollTop = box.scrollHeight;
   } catch { box.innerHTML = ''; }
 }
-
 function appendPrivateMsg(sender, message, mediaUrl, mediaType, isMine) {
   const box = document.getElementById('private-chat-box');
   let media = '';
@@ -223,58 +209,47 @@ function appendPrivateMsg(sender, message, mediaUrl, mediaType, isMine) {
   const who   = isMine ? 'Ani' : `@${sender}`;
   box.innerHTML += `<div style="${align}"><b>${who}:</b> ${message || ''} ${media}</div>`;
 }
-
 function closePrivateChat() {
   activeChatUser = null;
   document.getElementById('private-chat-section').style.display = 'none';
 }
-
 function sendPrivateMessage() {
   if (!activeChatUser) return;
   const input = document.getElementById('private-msg-input');
   const fileInput = document.getElementById('private-media-input');
   const message = input.value.trim();
   const file = fileInput.files[0];
-
   if (file) {
     if (file.size > 20 * 1024 * 1024) return alert('File guddaa dha (max 20MB)');
     const reader = new FileReader();
     reader.onload = e => {
       const type = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'image';
-      socket.emit('private-message', {
-        sender: currentUser.username, receiver: activeChatUser,
-        message, mediaUrl: e.target.result, mediaType: type
-      });
+      socket.emit('private-message', { sender: currentUser.username, receiver: activeChatUser, message, mediaUrl: e.target.result, mediaType: type });
       appendPrivateMsg(currentUser.username, message, e.target.result, type, true);
-      const b = document.getElementById('private-chat-box');
-      b.scrollTop = b.scrollHeight;
+      const b = document.getElementById('private-chat-box'); b.scrollTop = b.scrollHeight;
       input.value = ''; fileInput.value = '';
     };
     reader.readAsDataURL(file);
   } else if (message) {
     socket.emit('private-message', { sender: currentUser.username, receiver: activeChatUser, message });
     appendPrivateMsg(currentUser.username, message, null, null, true);
-    const b = document.getElementById('private-chat-box');
-    b.scrollTop = b.scrollHeight;
+    const b = document.getElementById('private-chat-box'); b.scrollTop = b.scrollHeight;
     input.value = '';
   }
 }
-
 socket.on('private-message', data => {
   if (activeChatUser === data.sender) {
     appendPrivateMsg(data.sender, data.message, data.mediaUrl, data.mediaType, false);
-    const b = document.getElementById('private-chat-box');
-    b.scrollTop = b.scrollHeight;
+    const b = document.getElementById('private-chat-box'); b.scrollTop = b.scrollHeight;
   } else {
     alert(`Ergaan haaraan @${data.sender} irraa dhufeera!`);
   }
 });
 
-// === SIGNAL CLASSIFICATION ===
+// === CALL ENGINE ===
 function isSdp(sig) { return sig && (sig.sdp || sig.type === 'offer' || sig.type === 'answer'); }
 function isIce(sig) { return sig && (sig.candidate || sig.type === 'candidate'); }
 
-// === ICE QUEUE HELPERS ===
 function flushPendingIce() {
   if (!peer) return;
   const q = pendingIceCandidates.slice();
@@ -283,65 +258,46 @@ function flushPendingIce() {
 }
 function clearIceQueue() { pendingIceCandidates = []; }
 
-// === CALL ENGINE (1-on-1) ===
 async function startCall(userToCall, isVideo) {
   if (!navigator.mediaDevices?.getUserMedia)
     return alert('Camera/Mic requires HTTPS. Render URL (https://) fayyadami.');
 
   try {
+    await ensureIceServersLoaded(); // 🔑 Mirkaneessi TURN jiraachuu
     currentStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: isVideo ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } : false
     });
-
     const grid = document.getElementById('video-grid');
-    grid.innerHTML =
-      `<video id="local-video" autoplay muted playsinline></video>
-       <video id="remote-video" autoplay playsinline></video>`;
+    grid.innerHTML = `<video id="local-video" autoplay muted playsinline></video><video id="remote-video" autoplay playsinline></video>`;
     document.getElementById('local-video').srcObject = currentStream;
     document.getElementById('call-screen').style.display = 'block';
 
     peer = new SimplePeer({
-      initiator: true,
-      trickle: true,
-      stream: currentStream,
+      initiator: true, trickle: true, stream: currentStream,
       config: iceServersConfig
     });
 
     peer.on('signal', sig => {
       if (isSdp(sig)) {
-        socket.emit('call-user', {
-          userToCall, signalData: sig,
-          callerName: currentUser.username, isVideo
-        });
+        socket.emit('call-user', { userToCall, signalData: sig, callerName: currentUser.username, isVideo });
       } else if (isIce(sig)) {
         socket.emit('ice-candidate', { toUsername: userToCall, candidate: sig });
       }
     });
-
     peer.on('stream', remoteStream => {
       const rv = document.getElementById('remote-video');
-      if (rv) {
-        rv.srcObject = remoteStream;
-        rv.play().catch(() => { rv.controls = true; });
-      }
+      if (rv) { rv.srcObject = remoteStream; rv.play().catch(() => { rv.controls = true; }); }
     });
-
     peer.on('connect', () => {
       console.log('✅ Peer connected');
       if (peerSetupTimeout) { clearTimeout(peerSetupTimeout); peerSetupTimeout = null; }
     });
-
     peer.on('error', err => {
       console.error('Peer err:', err);
-      alert('Connection failed: ' + err.message +
-        '\n\nMala qorannoo:\n' +
-        '• Labban lamaan WiFi/cellular irratti argamuu mirkaneessi\n' +
-        '• Network jijjiiri (WiFi↔data) irra deebi\'i\n' +
-        '• TURN server barbaachisuu danda\'a (admin .env qindeessi)');
+      alert('Connection failed: ' + err.message + '\n\nMala qorannoo:\n• TURN server qindaawuu mirkaneessi (.env)\n• Network jijjiiri (WiFi↔data)\n• Labban lamaan HTTPS irratti argamuu mirkaneessi');
       endCall();
     });
-
     peer.on('close', () => endCall());
 
     peerSetupTimeout = setTimeout(() => {
@@ -350,24 +306,17 @@ async function startCall(userToCall, isVideo) {
           const cands = [];
           stats.forEach(r => { if (r.type === 'local-candidate') cands.push(r.candidateType); });
           console.warn('ICE candidates types:', [...new Set(cands)].join(', '));
-          if (!cands.includes('relay')) {
-            console.warn('⚠️ Relay (TURN) candidate hin argamne! Cellular CGNAT irratti TURN barbaachisa.');
-          }
+          if (!cands.includes('relay')) console.warn('⚠️ Relay (TURN) candidate hin argamne! Cellular CGNAT irratti TURN barbaachisa.');
         });
       }
     }, 20000);
-
-  } catch (e) {
-    alert('Camera/Mic eeyyama barbaachisa!');
-    console.error(e);
-  }
+  } catch (e) { alert('Camera/Mic eeyyama barbaachisa!'); console.error(e); }
 }
 
 socket.on('incoming-call', data => {
   incomingData = data;
   document.getElementById('caller-name-txt').innerText = `${data.callerName} is calling...`;
   document.getElementById('call-modal').style.display = 'flex';
-
   if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500]);
   try { startRingtone(); } catch(e) { console.warn('ringtone err:', e); }
 });
@@ -376,54 +325,36 @@ async function acceptCall() {
   stopRingtone();
   document.getElementById('call-modal').style.display = 'none';
   document.getElementById('call-screen').style.display = 'block';
-
   try {
+    await ensureIceServersLoaded(); // 🔑 Mirkaneessi TURN jiraachuu
     currentStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: incomingData.isVideo ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } : false
     });
-
     const grid = document.getElementById('video-grid');
-    grid.innerHTML =
-      `<video id="local-video" autoplay muted playsinline></video>
-       <video id="remote-video" autoplay playsinline></video>`;
+    grid.innerHTML = `<video id="local-video" autoplay muted playsinline></video><video id="remote-video" autoplay playsinline></video>`;
     document.getElementById('local-video').srcObject = currentStream;
 
     peer = new SimplePeer({
-      initiator: false,
-      trickle: true,
-      stream: currentStream,
+      initiator: false, trickle: true, stream: currentStream,
       config: iceServersConfig
     });
 
     peer.on('signal', sig => {
-      if (isSdp(sig)) {
-        socket.emit('accept-call', { signal: sig, to: incomingData.from });
-      } else if (isIce(sig)) {
-        socket.emit('ice-candidate', { toUsername: incomingData.callerName, candidate: sig });
-      }
+      if (isSdp(sig)) socket.emit('accept-call', { signal: sig, to: incomingData.from });
+      else if (isIce(sig)) socket.emit('ice-candidate', { toUsername: incomingData.callerName, candidate: sig });
     });
-
     peer.on('stream', remoteStream => {
       const rv = document.getElementById('remote-video');
-      if (rv) {
-        rv.srcObject = remoteStream;
-        rv.play().catch(() => { rv.controls = true; });
-      }
+      if (rv) { rv.srcObject = remoteStream; rv.play().catch(() => { rv.controls = true; }); }
     });
-
     peer.on('connect', () => console.log('✅ Peer connected'));
     peer.on('error', err => { console.error('Peer err:', err); alert('Connection failed: ' + err.message); endCall(); });
     peer.on('close', () => endCall());
 
-    // 🔑 Feed offer, then flush any queued ICE
     peer.signal(incomingData.signal);
     setTimeout(flushPendingIce, 100);
-
-  } catch (e) {
-    alert('Camera/Mic eeyyama barbaachisa!');
-    console.error(e);
-  }
+  } catch (e) { alert('Camera/Mic eeyyama barbaachisa!'); console.error(e); }
 }
 
 function rejectCall() {
@@ -434,14 +365,8 @@ function rejectCall() {
   incomingData = null;
 }
 
-// === SIGNALING LISTENERS ===
 socket.on('call-accepted', signal => { if (peer) { try { peer.signal(signal); } catch(e){ console.warn(e); } } });
-
-socket.on('call-rejected', () => {
-  alert('Call reject ta\'eera.');
-  endCall();
-});
-
+socket.on('call-rejected', () => { alert('Call reject ta\'eera.'); endCall(); });
 socket.on('ice-candidate', candidate => {
   if (peer && peer._pc && peer._pc.signalingState !== 'closed') {
     try { peer.signal(candidate); } catch(e) { console.warn('ICE signal err:', e); }
@@ -450,7 +375,6 @@ socket.on('ice-candidate', candidate => {
     console.log('🕓 ICE queued (peer not ready yet):', pendingIceCandidates.length);
   }
 });
-
 socket.on('call-failed-offline', () => {
   alert('Maammilli offline waan ta\'eef bilbilamuu hin dandeenye (Missed Call galmaa\'eera).');
   endCall();
@@ -460,6 +384,7 @@ socket.on('call-failed-offline', () => {
 async function startGroupCall() {
   if (!navigator.mediaDevices?.getUserMedia) return alert('Camera/Mic requires HTTPS');
   try {
+    await ensureIceServersLoaded();
     currentStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true },
       video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
@@ -582,7 +507,6 @@ async function loadPosts() {
   });
 }
 
-// === Network resilience ===
 window.addEventListener('online', () => {
   console.log('Network online');
   if (currentUser && socket.connected) socket.emit('register-user', currentUser.username);
