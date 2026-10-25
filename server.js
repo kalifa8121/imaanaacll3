@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  maxHttpBufferSize: 50 * 1024 * 1024,        // 50MB (mobile safe)
+  maxHttpBufferSize: 50 * 1024 * 1024,
   pingTimeout: 60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
@@ -19,14 +19,14 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 10000;
 
-// Neon / Postgres URL - sslmode param haqii, ssl manually qindeessi
+// Neon / Postgres URL — sslmode param haqii, ssl manually qindeessi
 let dbUrl = process.env.DATABASE_URL;
 if (dbUrl && dbUrl.includes('sslmode=')) {
   try {
     const u = new URL(dbUrl);
     u.searchParams.delete('sslmode');
     dbUrl = u.toString();
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 }
 
 const pool = new Pool({
@@ -51,17 +51,15 @@ app.get('/api/ice-servers', (req, res) => {
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: 'stun:stun.nextcloud.com:443' }
   ];
 
   if (process.env.TURN_URL) {
-    iceServers.push({
-      urls: process.env.TURN_URL.split(',').map(s => s.trim()),
-      username: process.env.TURN_USERNAME || '',
-      credential: process.env.TURN_CREDENTIAL || ''
-    });
+    const urls = process.env.TURN_URL.split(',').map(s => s.trim());
+    const username = process.env.TURN_USERNAME || '';
+    const credential = process.env.TURN_CREDENTIAL || '';
+    urls.forEach(url => iceServers.push({ urls: url, username, credential }));
   } else {
-    // Fallback: free OpenRelay TURN (works for most cellular networks)
     iceServers.push({
       urls: [
         'turn:openrelay.metered.ca:80',
