@@ -36,15 +36,13 @@
         if (p.media_type === 'video') media = `<video src="${p.media_url}" controls></video>`;
         pc.innerHTML += `
           <div class="item-row">
-            <div><b>@${p.username}</b>: ${p.content || ''} ${media}
-              <br><small>Status: ${p.approved ? '✅ Approved' : '⏳ Pending'}</small></div>
+            <div><b>@${p.username}</b>: ${p.content || ''} ${media}<br><small>Status: ${p.approved ? '✅ Approved' : '⏳ Pending'}</small></div>
             <div>
               ${!p.approved ? `<button class="btn btn-green" onclick="approvePost(${p.id})">Raggaasisi</button>` : ''}
               <button class="btn btn-danger" onclick="deletePost(${p.id})">Haqi</button>
             </div>
           </div>`;
       });
-
       const users = await (await fetch('/api/admin/users')).json();
       const uc = document.getElementById('admin-users-list');
       uc.innerHTML = '';
@@ -52,13 +50,10 @@
         const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
         uc.innerHTML += `
           <div class="item-row">
-            <div><b>@${u.username}</b> — ${u.role} ${u.is_admin ? '👑' : ''}
-              <br><small>${isBanned ? '🔴 Banned' : '🟢 Active'}</small></div>
+            <div><b>@${u.username}</b> — ${u.role} ${u.is_admin ? '👑' : ''}<br><small>${isBanned ? '🔴 Banned' : '🟢 Active'}</small></div>
             <div>
               ${!u.is_admin ? `<button class="btn btn-primary" onclick="makeAdmin('${u.username}')">Admin</button>` : ''}
-              ${isBanned
-                ? `<button class="btn btn-green" onclick="unbanUser('${u.username}')">Unban</button>`
-                : `<button class="btn btn-danger" onclick="banUser('${u.username}')">Ugguri</button>`}
+              ${isBanned ? `<button class="btn btn-green" onclick="unbanUser('${u.username}')">Unban</button>` : `<button class="btn btn-danger" onclick="banUser('${u.username}')">Ugguri</button>`}
             </div>
           </div>`;
       });
